@@ -215,7 +215,7 @@ define([
                 x2t.ccall("main1", "number", ["string"], ["/working/params.xml"]);
             } catch (e) {
                 console.error(e);
-                return "";
+                return null;
             }
 
             // reading output file from working disk (in memory)
@@ -240,6 +240,7 @@ define([
                     if (o !== 'pdf') {
                         // Add intermediary conversion to Microsoft Office format if needed
                         // (bin to pdf is allowed)
+                        var failed = false;
                         [
                             // Import from Open Document
                             {source: '.ods', format: 'xlsx'},
@@ -250,14 +251,20 @@ define([
                             {source: '.bin', type: 'doc', format: 'docx'},
                             {source: '.bin', type: 'presentation', format: 'pptx'},
                         ].forEach(function (_step) {
+                            if (failed) { return; }
                             if (obj.fileName.endsWith(_step.source) && obj.outputFormat !== _step.format &&
                                 (!_step.type || _step.type === obj.type)) {
                                 obj.outputFormat = _step.format;
                                 obj.data = x2tConvertDataInternal(x2t, obj);
+                                if (!obj.data || !obj.data.byteLength) {
+                                    failed = true;
+                                    return;
+                                }
                                 obj.fileName += '.'+_step.format;
                             }
                         });
                         obj.outputFormat = o;
+                        if (failed) { return void cb({data: null}); }
                     }
 
                     var data = x2tConvertDataInternal(x2t, obj);
